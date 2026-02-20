@@ -82,3 +82,5 @@ debug_raw.png
 
 *.npz
 *.pt
+
+ppo_dino_tensorboard/
