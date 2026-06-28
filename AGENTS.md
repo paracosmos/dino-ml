@@ -32,7 +32,20 @@ python -m src.ml.rl.train      # PPO -> checkpoints/, best_model/, ppo_dino_fina
 python -m src.ml.rl.play       # run a trained PPO model live
 ```
 
-There are no tests, linter config, or build step in the repo. The `train`/`play` scripts assume a CUDA device (`device="cuda"` is hardcoded in `rl/train.py`; SL scripts fall back to CPU).
+The `train`/`play` scripts run on CUDA when available and fall back to CPU otherwise.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest                 # runs tests/ (config, action spec, preprocessing, model build/forward)
+python -m compileall src   # byte-compile sanity check
+```
+
+Tests cover the headless-safe units only — they deliberately avoid importing `dino_env`,
+`recorder`, and the live players, which require a display (`pyautogui`/`pynput`) and a real
+game window. CI (`.github/workflows/ci.yml`) installs deps and runs `compileall` + `pytest`
+on every push/PR.
 
 ## Architecture
 
@@ -70,6 +83,6 @@ Key cross-cutting facts that aren't obvious from one file:
 
 ## Notes
 
-- `requirements.txt` is UTF-16 encoded — edit it carefully (or rewrite as UTF-8) so it stays installable.
+- `requirements.txt` is a pinned freeze (UTF-8). `requirements-dev.txt` adds `pytest` on top of it.
 - All model artifacts (`*.npz`, `*.pt`, `*.zip`) and `debug_*.png` are gitignored; the repo ships code only.
 - Originally developed on Windows (README uses `.\src\...` paths); the package layout works cross-platform when invoked with `python -m`.
