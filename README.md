@@ -7,8 +7,12 @@ and sending real keyboard/mouse input. Two approaches share one CNN backbone:
 - **RL (PPO / DQN)** — a Gymnasium environment trained with stable-baselines3.
 
 Observations are frame-stacked grayscale crops (`n_stack` frames) so the agent can perceive
-motion. The SL backbone can warm-start RL. See **[AGENTS.md](./AGENTS.md)** for architecture
-and contributor notes.
+motion. The SL backbone can warm-start RL.
+
+- **[AGENTS.md](./AGENTS.md)** — architecture and contributor notes.
+- **[docs/EXPERIMENTS.md](./docs/EXPERIMENTS.md)** — step-by-step run book for the full
+  record -> train -> evaluate workflow and the ML experiments (warm-start, DQN vs PPO,
+  reward shaping, latency).
 
 ## Setup
 
