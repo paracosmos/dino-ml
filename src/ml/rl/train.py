@@ -1,3 +1,5 @@
+import os
+
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -6,6 +8,10 @@ from stable_baselines3.common.monitor import Monitor
 from src.ml.dino.config import DinoEnvConfig
 from src.ml.dino.dino_env import DinoEnv
 from src.ml.rl.policy import DinoFeatureExtractor
+
+
+# SL 로 사전학습한 backbone 체크포인트. 존재하면 RL 백본을 warm start 한다. (plan M4)
+SL_BACKBONE_PATH = "dino_sl_cnn.pt"
 
 
 ############################################
@@ -30,9 +36,19 @@ def main():
     # 게임 화면을 도중에 리셋/조작해 학습 신호를 망가뜨리기 때문이다.
     env = DummyVecEnv([make_env()])
 
+    # SL backbone 이 있으면 warm start, 없으면 무작위 초기화로 학습
+    pretrained = SL_BACKBONE_PATH if os.path.exists(SL_BACKBONE_PATH) else None
+    if pretrained:
+        print(f"[warmstart] SL backbone 으로 초기화: {pretrained}")
+    else:
+        print("[warmstart] SL backbone 없음 -> 무작위 초기화로 학습")
+
     policy_kwargs = dict(
         features_extractor_class=DinoFeatureExtractor,
-        features_extractor_kwargs=dict(features_dim=256),
+        features_extractor_kwargs=dict(
+            features_dim=256,
+            pretrained_backbone=pretrained,
+        ),
 
         # CNN 이후 MLP
         net_arch=dict(

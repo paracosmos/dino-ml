@@ -74,6 +74,8 @@ Key cross-cutting facts that aren't obvious from one file:
 
 - **SL and RL share the CNN but diverge after it.** `DinoSLModel` puts a classification head on the backbone; the SL pipeline saves the **full `DinoSLModel`** state dict to `dino_sl_cnn.pt`, which is what `sl/play.py` loads back. The RL side wraps the backbone in an SB3 `BaseFeaturesExtractor` (`rl/policy.py`) and `rl/train.py` uses `DinoFeatureExtractor` from there.
 
+- **SL -> RL warm start.** If `dino_sl_cnn.pt` exists, `rl/train.py` passes it to the feature extractor, which loads the `backbone.*` weights into its CNN (`load_backbone_weights`) so RL starts from the SL-pretrained representation. Missing/incompatible checkpoints are skipped silently and RL falls back to random init.
+
 - **`DinoCNNBackbone.features_dim`** is computed once from a dummy forward pass and read by both `DinoSLModel` and `rl/policy.py` to size their first linear layer.
 
 ## Screen ROI (must calibrate before anything works)
