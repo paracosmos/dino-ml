@@ -17,14 +17,20 @@ def make_env():
 
 def warm_start(model) -> bool:
     # DQN 은 q_net / q_net_target 두 네트워크가 각자 feature extractor 를 가진다.
-    # build(직교 초기화) 이후, 둘 다의 backbone 을 SL 가중치로 채운다.
-    results = []
-    for attr in ("q_net", "q_net_target"):
-        net = getattr(model.policy, attr, None)
-        fe = getattr(net, "features_extractor", None)
-        if fe is not None and hasattr(fe, "cnn"):
-            results.append(load_backbone_weights(fe.cnn, SL_BACKBONE_PATH))
-    return any(results)
+    # build(직교 초기화) 이후 q_net 의 backbone 을 SL 가중치로 채우고,
+    # target net 은 q_net 전체를 복사해 동기화한다(정상적인 DQN 초기 상태 유지).
+    q_net = getattr(model.policy, "q_net", None)
+    fe = getattr(q_net, "features_extractor", None) if q_net is not None else None
+    if fe is None or not hasattr(fe, "cnn"):
+        return False
+
+    if not load_backbone_weights(fe.cnn, SL_BACKBONE_PATH):
+        return False
+
+    target = getattr(model.policy, "q_net_target", None)
+    if target is not None:
+        target.load_state_dict(q_net.state_dict())
+    return True
 
 
 def main():

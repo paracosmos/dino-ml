@@ -55,6 +55,7 @@ src/ml/dino/     environment + shared game I/O
   preprocess.py    BGR frame -> 84x84x1 grayscale frame (uint8); + float helpers for inference
   framestack.py    FrameStacker — stack last n_stack frames into (H,W,n) for motion/velocity
   signals.py       detect_dead / score_crop — pure game-signal helpers (M4)
+  score.py         template-matching score OCR (M4); supply real digit templates
   reward.py        compute_reward — config-driven reward shaping (M7)
   roi.py           roi_from_window / resolve_roi — auto ROI from the Chrome window (M2)
   action_spec.py   DinoAction IntEnum: NOOP=0, JUMP=1, DUCK=2
@@ -63,8 +64,8 @@ src/ml/dino/     environment + shared game I/O
 src/ml/model/
   cnn_backbone.py      DinoCNNBackbone — the shared Conv stack (this is the canonical one)
 
-src/ml/util/       latency.py (M3), metrics.py + experiment.py (M8), framebuffer.py (M9)
-src/ml/sl/         recorder.py, train.py, play.py, report.py (M5 dataset/eval report)
+src/ml/util/       latency.py (M3), metrics.py + experiment.py (M8), framebuffer.py + capture.py (M9)
+src/ml/sl/         recorder.py, train.py, play.py, play_async.py (M9 threaded), report.py (M5)
 src/ml/rl/         policy.py (SB3 features extractor), train.py (PPO), train_dqn.py (M7), play.py, eval.py (M8)
 ```
 
