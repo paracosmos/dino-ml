@@ -15,7 +15,7 @@ class DinoCNNBackbone(nn.Module):
             nn.Flatten()
         )
 
-        # obs_size must match DinoEnvConfig.obs_size used to build observations.
+        # obs_size 는 관측을 만들 때 쓰는 DinoEnvConfig.obs_size 와 일치해야 한다.
         with torch.no_grad():
             sample = torch.zeros(1, 1, obs_size, obs_size)
             self.features_dim = self.cnn(sample).shape[1]

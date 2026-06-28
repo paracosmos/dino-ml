@@ -1,6 +1,6 @@
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 
 from src.ml.dino.config import DinoEnvConfig
@@ -11,7 +11,7 @@ from src.ml.rl.policy import DinoFeatureExtractor
 ############################################
 # env factory
 ############################################
-def make_env(rank: int):
+def make_env():
     def _init():
         env = DinoEnv(DinoEnvConfig())
         env = Monitor(env)   # reward / episode 길이 자동 기록
@@ -26,12 +26,9 @@ def main():
 
     # 단일 물리 화면/키보드를 캡처·제어하므로 env 는 1개만 사용한다.
     # (병렬 env 는 같은 화면을 동시에 조작해 서로 간섭하므로 불가)
-    env = DummyVecEnv([make_env(0)])
-
-    ############################################
-    # 평가용 env (best 모델 저장용)
-    ############################################
-    eval_env = DummyVecEnv([make_env(999)])
+    # 같은 이유로 별도 eval_env 도 두지 않는다 — 평가 에피소드가 학습 중인
+    # 게임 화면을 도중에 리셋/조작해 학습 신호를 망가뜨리기 때문이다.
+    env = DummyVecEnv([make_env()])
 
     policy_kwargs = dict(
         features_extractor_class=DinoFeatureExtractor,
@@ -77,28 +74,19 @@ def main():
         name_prefix="ppo_dino",
     )
 
-    eval_callback = EvalCallback(
-        eval_env,
-        best_model_save_path="./best_model/",
-        eval_freq=25_000,
-        deterministic=True,
-        render=False,
-    )
-
     ############################################
     # train
     ############################################
 
     model.learn(
         total_timesteps=1_000_000,
-        callback=[checkpoint_callback, eval_callback],
+        callback=[checkpoint_callback],
         progress_bar=True,
     )
 
     model.save("ppo_dino_final")
 
     env.close()
-    eval_env.close()
 
 
 if __name__ == "__main__":

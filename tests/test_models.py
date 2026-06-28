@@ -35,6 +35,21 @@ def test_sl_model_outputs_one_logit_per_action():
     assert out.shape == (4, n)
 
 
+def test_sl_model_threads_obs_size():
+    # obs_size 가 백본까지 실제로 전달되어 다른 입력 크기에서도 동작해야 한다.
+    n = len(DinoAction)
+    model = DinoSLModel(n_actions=n, obs_size=64)
+    out = model(torch.zeros(2, 1, 64, 64))
+    assert out.shape == (2, n)
+
+
+def test_rl_feature_extractor_threads_obs_size():
+    obs_space = spaces.Box(low=0, high=255, shape=(64, 64, 1), dtype=np.uint8)
+    fe = DinoFeatureExtractor(obs_space, features_dim=128)
+    out = fe(torch.zeros(2, 1, 64, 64))
+    assert out.shape == (2, 128)
+
+
 def test_rl_feature_extractor_forward_shape():
     obs_space = spaces.Box(low=0, high=255, shape=(84, 84, 1), dtype=np.uint8)
     fe = DinoFeatureExtractor(obs_space, features_dim=256)

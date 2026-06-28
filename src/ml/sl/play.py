@@ -50,7 +50,7 @@ def main():
         print(" - dino_sl_cnn.pt 위치를 확인하거나 model_path를 수정하세요.")
         return
 
-    model = DinoSLModel(n_actions=len(DinoAction)).to(device)
+    model = DinoSLModel(n_actions=len(DinoAction), obs_size=env.obs_size).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 

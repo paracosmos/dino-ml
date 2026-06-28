@@ -15,13 +15,13 @@ def main():
     try:
         while True:
             action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, _ = env.step(action)
+            obs, _, terminated, truncated, _ = env.step(action)
 
             frame = obs[:, :, 0]
             frame = cv2.resize(frame, None, fx=5, fy=5)
             cv2.imshow("RL", frame)
 
-            if terminated:
+            if terminated or truncated:
                 obs, _ = env.reset()
                 time.sleep(0.2)
 
