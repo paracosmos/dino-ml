@@ -1,5 +1,5 @@
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 from stable_baselines3.common.monitor import Monitor
 
@@ -9,12 +9,12 @@ from src.ml.rl.policy import DinoFeatureExtractor
 
 
 ############################################
-# env factory (멀티 프로세스용)
+# env factory
 ############################################
 def make_env(rank: int):
     def _init():
         env = DinoEnv(DinoEnvConfig())
-        env = Monitor(env)   # ⭐ reward / episode 길이 자동 기록
+        env = Monitor(env)   # reward / episode 길이 자동 기록
         return env
     return _init
 
@@ -24,15 +24,14 @@ def make_env(rank: int):
 ############################################
 def main():
 
-    # ⭐⭐⭐ 매우 중요 — RL 속도 3~6배 상승
-    N_ENVS = 4
-
-    env = SubprocVecEnv([make_env(i) for i in range(N_ENVS)])
+    # 단일 물리 화면/키보드를 캡처·제어하므로 env 는 1개만 사용한다.
+    # (병렬 env 는 같은 화면을 동시에 조작해 서로 간섭하므로 불가)
+    env = DummyVecEnv([make_env(0)])
 
     ############################################
     # 평가용 env (best 모델 저장용)
     ############################################
-    eval_env = SubprocVecEnv([make_env(999)])
+    eval_env = DummyVecEnv([make_env(999)])
 
     policy_kwargs = dict(
         features_extractor_class=DinoFeatureExtractor,
@@ -52,9 +51,9 @@ def main():
         verbose=1,
 
         ############################
-        # 🔥 Dino에 매우 좋은 세팅
+        # Dino에 매우 좋은 세팅
         ############################
-        n_steps=4096,        # ← 중요 (2048보다 안정적)
+        n_steps=4096,        # 중요 (2048보다 안정적)
         batch_size=256,
         learning_rate=2.5e-4,
 
@@ -62,7 +61,7 @@ def main():
         gae_lambda=0.98,
 
         clip_range=0.15,    # PPO 안정화
-        ent_coef=0.01,      # 탐험 증가 ⭐⭐⭐
+        ent_coef=0.01,      # 탐험 증가
 
         device="cuda",
         tensorboard_log="./ppo_dino_tensorboard/",

@@ -13,7 +13,7 @@ class DinoFeatureExtractor(BaseFeaturesExtractor):
         self.cnn = DinoCNNBackbone()
 
         self.linear = nn.Sequential(
-            nn.Linear(self.cnn._features_dim, features_dim),
+            nn.Linear(self.cnn.features_dim, features_dim),
             nn.ReLU(),
         )
 

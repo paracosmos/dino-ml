@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class DinoCNNBackbone(nn.Module):
 
-    def __init__(self):
+    def __init__(self, obs_size: int = 84):
         super().__init__()
 
         self.cnn = nn.Sequential(
@@ -15,9 +15,10 @@ class DinoCNNBackbone(nn.Module):
             nn.Flatten()
         )
 
+        # obs_size must match DinoEnvConfig.obs_size used to build observations.
         with torch.no_grad():
-            sample = torch.zeros(1, 1, 84, 84)  # obs_size 맞춰라
-            self._features_dim = self.cnn(sample).shape[1]
+            sample = torch.zeros(1, 1, obs_size, obs_size)
+            self.features_dim = self.cnn(sample).shape[1]
 
     def forward(self, x):
         return self.cnn(x)

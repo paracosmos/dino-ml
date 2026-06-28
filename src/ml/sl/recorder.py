@@ -102,7 +102,7 @@ def main():
     finally:
         listener.stop()
 
-    # ✅ finally 밖에서 처리 (return/저장 분기)
+    # finally 밖에서 처리 (return/저장 분기)
     if len(obs_list) == 0:
         print("No samples collected. (ROI/Focus/Key capture 확인)")
         return

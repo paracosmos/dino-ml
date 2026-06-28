@@ -10,7 +10,7 @@ class DinoSLModel(nn.Module):
         self.backbone = DinoCNNBackbone()
 
         self.head = nn.Sequential(
-            nn.Linear(self.backbone._features_dim, 256),
+            nn.Linear(self.backbone.features_dim, 256),
             nn.ReLU(),
             nn.Linear(256, n_actions)
         )
