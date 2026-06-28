@@ -9,6 +9,8 @@ from mss import mss
 from src.ml.dino.config import DinoEnvConfig
 from src.ml.dino.preprocess import preprocess_obs
 from src.ml.dino.framestack import FrameStacker
+from src.ml.dino.signals import detect_dead
+from src.ml.dino.reward import compute_reward
 
 
 class DinoEnv(gym.Env):
@@ -42,11 +44,6 @@ class DinoEnv(gym.Env):
         img = np.array(self.sct.grab(self.monitor))
         return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
-    def _is_dead(self, gray):
-        h, w = gray.shape
-        roi = gray[int(h*0.2):int(h*0.45), int(w*0.35):int(w*0.65)]
-        return roi.mean() > 140
-
     def _act(self, action):
 
         if action == 1:
@@ -76,23 +73,29 @@ class DinoEnv(gym.Env):
 
     def step(self, action):
 
+        # action repeat: 한 번 입력하고 frame_skip 프레임 동안 관측을 누적한다 (M3).
         self._act(action)
-        time.sleep(self.cfg.step_sleep)
 
-        bgr = self._grab_bgr()
-        gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+        total_reward = 0.0
+        dead = False
+        obs = None
 
-        frame = preprocess_obs(bgr, self.cfg)
-        obs = self.stacker.append(frame)       # 최신 프레임을 스택에 누적
+        for _ in range(max(1, self.cfg.frame_skip)):
+            time.sleep(self.cfg.step_sleep)
 
-        dead = self._is_dead(gray)
+            bgr = self._grab_bgr()
+            gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
-        reward = -100.0 if dead else 1.0
+            obs = self.stacker.append(preprocess_obs(bgr, self.cfg))
+            dead = detect_dead(gray, self.cfg)
+            total_reward += compute_reward(dead, self.cfg)
 
-        if not dead:
+            if dead:
+                break
+
             self.steps_alive += 1
 
-        return obs, reward, dead, False, {"steps": self.steps_alive}
+        return obs, total_reward, dead, False, {"steps": self.steps_alive}
 
     def close(self):
         self.sct.close()

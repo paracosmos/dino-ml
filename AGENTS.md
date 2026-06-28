@@ -51,18 +51,26 @@ on every push/PR.
 
 ```
 src/ml/dino/     environment + shared game I/O
-  config.py        DinoEnvConfig — ROI coords, fps, keys, timing, n_stack (single source of truth)
+  config.py        DinoEnvConfig — ROI, fps, keys, timing, n_stack, frame_skip, reward, dead_threshold
   preprocess.py    BGR frame -> 84x84x1 grayscale frame (uint8); + float helpers for inference
   framestack.py    FrameStacker — stack last n_stack frames into (H,W,n) for motion/velocity
+  signals.py       detect_dead / score_crop — pure game-signal helpers (M4)
+  reward.py        compute_reward — config-driven reward shaping (M7)
+  roi.py           roi_from_window / resolve_roi — auto ROI from the Chrome window (M2)
   action_spec.py   DinoAction IntEnum: NOOP=0, JUMP=1, DUCK=2
-  dino_env.py      DinoEnv(gym.Env) — capture, stack, act, reward, death detection
+  dino_env.py      DinoEnv(gym.Env) — capture, stack, act, frame-skip, reward, death detection
 
 src/ml/model/
   cnn_backbone.py      DinoCNNBackbone — the shared Conv stack (this is the canonical one)
 
-src/ml/sl/         recorder.py, train.py, play.py
-src/ml/rl/         policy.py (SB3 features extractor), train.py, play.py
+src/ml/util/       latency.py (M3), metrics.py + experiment.py (M8), framebuffer.py (M9)
+src/ml/sl/         recorder.py, train.py, play.py, report.py (M5 dataset/eval report)
+src/ml/rl/         policy.py (SB3 features extractor), train.py (PPO), train_dqn.py (M7), play.py, eval.py (M8)
 ```
+
+Pure logic (signals, reward, roi math, report, util/*) is unit-tested in CI. Modules that drive
+the real game (`dino_env`, `recorder`, `*/play.py`, `rl/train*.py`, `rl/eval.py`) need a display +
+live game, so CI only byte-compiles them; validate those by running against the actual Dino window.
 
 Key cross-cutting facts that aren't obvious from one file:
 

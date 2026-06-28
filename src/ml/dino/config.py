@@ -16,10 +16,18 @@ class DinoEnvConfig:
     # -------- control --------
     key_jump: str = "space"
     key_duck: str = "down"
+    frame_skip: int = 1        # 한 action 을 몇 프레임 유지할지 (M3, action repeat)
 
     # -------- timing --------
     step_sleep: float = 0.02
     reset_sleep: float = 0.4
+
+    # -------- reward shaping (M7) --------
+    reward_alive: float = 1.0
+    reward_death: float = -100.0
+
+    # -------- death detection (M4) --------
+    dead_threshold: float = 140.0   # 중앙 crop 평균 밝기 임계 (이상이면 game-over)
 
     @property
     def roi(self):
