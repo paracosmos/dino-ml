@@ -74,7 +74,7 @@ Key cross-cutting facts that aren't obvious from one file:
 
 - **SL and RL share the CNN but diverge after it.** `DinoSLModel` puts a classification head on the backbone; the SL pipeline saves the **full `DinoSLModel`** state dict to `dino_sl_cnn.pt`, which is what `sl/play.py` loads back. The RL side wraps the backbone in an SB3 `BaseFeaturesExtractor` (`rl/policy.py`) and `rl/train.py` uses `DinoFeatureExtractor` from there.
 
-- **SL -> RL warm start.** If `dino_sl_cnn.pt` exists, `rl/train.py` passes it to the feature extractor, which loads the `backbone.*` weights into its CNN (`load_backbone_weights`) so RL starts from the SL-pretrained representation. Missing/incompatible checkpoints are skipped silently and RL falls back to random init.
+- **SL -> RL warm start.** `rl/train.py` calls `load_backbone_weights(model.policy.features_extractor.cnn, SL_BACKBONE_PATH)` **after** the PPO model is built — it must run post-build because PPO's `ortho_init=True` re-initializes the feature extractor during policy construction and would otherwise wipe the loaded weights. `load_backbone_weights` accepts both the full-model checkpoint (`backbone.*`/`head.*`) and a legacy backbone-only one, copies only shape-matching keys (partial transfer, `strict=False`), and returns a bool without logging; `train.py` does the single success/fallback log. The checkpoint path is imported from `sl/train.py` (`MODEL_PATH`) so the filename has one source.
 
 - **`DinoCNNBackbone.features_dim`** is computed once from a dummy forward pass and read by both `DinoSLModel` and `rl/policy.py` to size their first linear layer.
 

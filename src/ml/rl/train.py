@@ -1,5 +1,3 @@
-import os
-
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -7,11 +5,8 @@ from stable_baselines3.common.monitor import Monitor
 
 from src.ml.dino.config import DinoEnvConfig
 from src.ml.dino.dino_env import DinoEnv
-from src.ml.rl.policy import DinoFeatureExtractor
-
-
-# SL 로 사전학습한 backbone 체크포인트. 존재하면 RL 백본을 warm start 한다. (plan M4)
-SL_BACKBONE_PATH = "dino_sl_cnn.pt"
+from src.ml.rl.policy import DinoFeatureExtractor, load_backbone_weights
+from src.ml.sl.train import MODEL_PATH as SL_BACKBONE_PATH   # SL 체크포인트 경로 단일 출처
 
 
 ############################################
@@ -36,19 +31,9 @@ def main():
     # 게임 화면을 도중에 리셋/조작해 학습 신호를 망가뜨리기 때문이다.
     env = DummyVecEnv([make_env()])
 
-    # SL backbone 이 있으면 warm start, 없으면 무작위 초기화로 학습
-    pretrained = SL_BACKBONE_PATH if os.path.exists(SL_BACKBONE_PATH) else None
-    if pretrained:
-        print(f"[warmstart] SL backbone 으로 초기화: {pretrained}")
-    else:
-        print("[warmstart] SL backbone 없음 -> 무작위 초기화로 학습")
-
     policy_kwargs = dict(
         features_extractor_class=DinoFeatureExtractor,
-        features_extractor_kwargs=dict(
-            features_dim=256,
-            pretrained_backbone=pretrained,
-        ),
+        features_extractor_kwargs=dict(features_dim=256),
 
         # CNN 이후 MLP
         net_arch=dict(
@@ -79,6 +64,15 @@ def main():
         device="cuda",
         tensorboard_log="./ppo_dino_tensorboard/",
     )
+
+    ############################################
+    # warm start (plan M4): SL backbone -> RL backbone
+    # PPO build(ortho_init) 이후에 로드해야 직교 초기화에 덮어써지지 않는다.
+    ############################################
+    if load_backbone_weights(model.policy.features_extractor.cnn, SL_BACKBONE_PATH):
+        print(f"[warmstart] SL backbone 로드 성공: {SL_BACKBONE_PATH}")
+    else:
+        print("[warmstart] SL backbone 없음/비호환 -> 무작위 초기화로 학습")
 
     ############################################
     # callbacks

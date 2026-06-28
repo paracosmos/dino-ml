@@ -7,35 +7,48 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from src.ml.model.cnn_backbone import DinoCNNBackbone
 
 
-def load_backbone_weights(backbone: DinoCNNBackbone, sl_ckpt_path: str) -> bool:
-    """SL 체크포인트(dino_sl_cnn.pt)의 backbone 가중치를 RL 백본에 로드한다 (warm start).
+def load_backbone_weights(backbone: DinoCNNBackbone, sl_ckpt_path) -> bool:
+    """SL 체크포인트의 backbone 가중치를 RL 백본에 로드한다 (warm start). 성공 여부를 반환.
 
-    SL 은 전체 DinoSLModel(state dict key 가 `backbone.*` / `head.*`)을 저장하므로
-    `backbone.` 접두어를 떼어 백본 전용 state dict 로 만든 뒤 로드한다.
-    실패(파일 없음/형상 불일치) 시 조용히 건너뛰고 False 를 반환한다.
+    - 전체 DinoSLModel 체크포인트(`backbone.*` / `head.*`)와 구버전 backbone-only
+      체크포인트(`cnn.*`)를 모두 처리한다.
+    - 형상이 맞는 키만 부분 로드(strict=False)하고, 하나도 못 맞추면 False.
+    - 로그를 찍지 않는다(조용히 동작). 결과 로깅은 호출 측 책임.
+
+    주의: PPO(ortho_init=True)는 policy build 시 feature extractor 를 직교 초기화로
+    재설정하므로, 이 함수는 반드시 PPO 생성 이후에 호출해야 한다. 그 전에 로드하면
+    build 과정에서 덮어써져 warm start 가 무효가 된다.
     """
     if not sl_ckpt_path or not os.path.exists(sl_ckpt_path):
         return False
     try:
         state = torch.load(sl_ckpt_path, map_location="cpu")
-        prefix = "backbone."
-        backbone_state = {
-            k[len(prefix):]: v for k, v in state.items() if k.startswith(prefix)
-        }
-        if not backbone_state:
-            print(f"[warmstart] {sl_ckpt_path} 에 backbone.* 키가 없어 건너뜀")
-            return False
-        backbone.load_state_dict(backbone_state)
-        print(f"[warmstart] SL backbone 가중치 로드 완료: {sl_ckpt_path}")
-        return True
-    except Exception as e:
-        print(f"[warmstart] 로드 실패 ({e}); 무작위 초기화로 진행")
+    except Exception:
         return False
+
+    # 전체 모델이면 backbone.* 만 추출, 구버전(backbone-only)이면 head.* 제외 후 그대로.
+    backbone_state = {
+        k[len("backbone."):]: v for k, v in state.items() if k.startswith("backbone.")
+    }
+    if not backbone_state:
+        backbone_state = {k: v for k, v in state.items() if not k.startswith("head.")}
+
+    # 형상이 일치하는 키만 선별해 부분 전이를 허용한다.
+    own = backbone.state_dict()
+    matched = {
+        k: v for k, v in backbone_state.items()
+        if k in own and own[k].shape == v.shape
+    }
+    if not matched:
+        return False
+
+    backbone.load_state_dict(matched, strict=False)
+    return True
 
 
 class DinoFeatureExtractor(BaseFeaturesExtractor):
 
-    def __init__(self, observation_space, features_dim=256, pretrained_backbone=None):
+    def __init__(self, observation_space, features_dim=256):
         super().__init__(observation_space, features_dim)
 
         # 관측 공간에서 obs_size / 채널 수를 추출해 백본에 전달.
@@ -50,10 +63,6 @@ class DinoFeatureExtractor(BaseFeaturesExtractor):
             in_channels, obs_size = shape[0], shape[1]
 
         self.cnn = DinoCNNBackbone(obs_size, in_channels)
-
-        # SL 로 사전학습한 표현을 재사용 (plan M4: SL -> RL 전이학습)
-        if pretrained_backbone:
-            load_backbone_weights(self.cnn, pretrained_backbone)
 
         self.linear = nn.Sequential(
             nn.Linear(self.cnn.features_dim, features_dim),
