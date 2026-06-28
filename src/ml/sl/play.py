@@ -6,7 +6,8 @@ import torch
 import os
 
 from src.ml.dino.config import DinoEnvConfig
-from src.ml.dino.preprocess import preprocess_obs_float
+from src.ml.dino.preprocess import preprocess_obs, stack_to_float
+from src.ml.dino.framestack import FrameStacker
 from src.ml.dino.action_spec import DinoAction
 from src.ml.model.dino_sl_model import DinoSLModel
 
@@ -50,7 +51,9 @@ def main():
         print(" - dino_sl_cnn.pt 위치를 확인하거나 model_path를 수정하세요.")
         return
 
-    model = DinoSLModel(n_actions=len(DinoAction), obs_size=env.obs_size).to(device)
+    model = DinoSLModel(
+        n_actions=len(DinoAction), obs_size=env.obs_size, in_channels=env.n_stack
+    ).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
@@ -59,6 +62,7 @@ def main():
     # =========================
     sct = mss()
     dt = 1.0 / env.fps
+    stacker = FrameStacker(env.n_stack)
 
     # =========================
     # Control state
@@ -103,7 +107,8 @@ def main():
             # Capture + preprocess
             # =========================
             frame = np.array(sct.grab(env.roi))[:, :, :3]
-            x = preprocess_obs_float(frame, env)        # (1,1,H,W) float32
+            stacked = stacker.append(preprocess_obs(frame, env))   # (H,W,n_stack)
+            x = stack_to_float(stacked)                            # (1,n_stack,H,W)
             xb = torch.from_numpy(x).to(device)
 
             # =========================

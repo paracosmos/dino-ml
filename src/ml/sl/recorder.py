@@ -7,6 +7,7 @@ from collections import Counter, deque
 
 from src.ml.dino.config import DinoEnvConfig
 from src.ml.dino.preprocess import preprocess_obs
+from src.ml.dino.framestack import FrameStacker
 from src.ml.dino.action_spec import DinoAction
 
 
@@ -53,6 +54,9 @@ def main():
     obs_list, label_list = [], []
     dt = 1.0 / env.fps
 
+    # 단일 프레임이 아니라 (H,W,n_stack) 스택을 저장해 학습 입력과 동일하게 맞춘다.
+    stacker = FrameStacker(env.n_stack)
+
     obs_buf = deque(maxlen=cfg.label_shift_frames + 1)
     label_buf = deque(maxlen=cfg.label_shift_frames + 1)
     last_log_t = time.time()
@@ -63,7 +67,7 @@ def main():
             t0 = time.time()
 
             frame = np.array(sct.grab(env.roi))[:, :, :3]
-            obs = preprocess_obs(frame, env)
+            obs = stacker.append(preprocess_obs(frame, env))   # (H,W,n_stack)
             y = ks.label()
 
             obs_buf.append(obs)

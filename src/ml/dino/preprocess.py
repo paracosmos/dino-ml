@@ -14,3 +14,9 @@ def preprocess_obs_float(bgr: np.ndarray, cfg: DinoEnvConfig) -> np.ndarray:
     obs = obs_u8.astype(np.float32) / 255.0
     # (1,1,H,W)
     return obs.transpose(2, 0, 1)[None, ...]
+
+def stack_to_float(stacked_u8: np.ndarray) -> np.ndarray:
+    """(H, W, n) uint8 stack -> (1, n, H, W) float32 in [0,1] for inference"""
+    obs = stacked_u8.astype(np.float32) / 255.0
+    # (H,W,n) -> (n,H,W) -> (1,n,H,W)
+    return obs.transpose(2, 0, 1)[None, ...]

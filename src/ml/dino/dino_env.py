@@ -8,6 +8,7 @@ from mss import mss
 
 from src.ml.dino.config import DinoEnvConfig
 from src.ml.dino.preprocess import preprocess_obs
+from src.ml.dino.framestack import FrameStacker
 
 
 class DinoEnv(gym.Env):
@@ -24,9 +25,11 @@ class DinoEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=(self.cfg.obs_size, self.cfg.obs_size, 1),
+            shape=(self.cfg.obs_size, self.cfg.obs_size, self.cfg.n_stack),
             dtype=np.uint8,
         )
+
+        self.stacker = FrameStacker(self.cfg.n_stack)
 
         self.sct = mss()
         self.monitor = self.cfg.roi
@@ -66,7 +69,8 @@ class DinoEnv(gym.Env):
         time.sleep(self.cfg.reset_sleep)
 
         bgr = self._grab_bgr()
-        obs = preprocess_obs(bgr, self.cfg)
+        frame = preprocess_obs(bgr, self.cfg)
+        obs = self.stacker.reset(frame)        # 첫 프레임으로 스택을 채움
 
         return obs, {}
 
@@ -78,7 +82,8 @@ class DinoEnv(gym.Env):
         bgr = self._grab_bgr()
         gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
 
-        obs = preprocess_obs(bgr, self.cfg)
+        frame = preprocess_obs(bgr, self.cfg)
+        obs = self.stacker.append(frame)       # 최신 프레임을 스택에 누적
 
         dead = self._is_dead(gray)
 

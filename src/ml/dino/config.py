@@ -4,6 +4,7 @@ from dataclasses import dataclass
 class DinoEnvConfig:
     # -------- observation --------
     obs_size: int = 84
+    n_stack: int = 4        # 연속 프레임 수 (속도/움직임 정보를 채널로 제공)
     fps: int = 30
 
     # -------- screen ROI --------

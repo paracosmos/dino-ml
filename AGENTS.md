@@ -51,10 +51,11 @@ on every push/PR.
 
 ```
 src/ml/dino/     environment + shared game I/O
-  config.py        DinoEnvConfig — ROI coords, fps, keys, timing (single source of truth)
-  preprocess.py    BGR frame -> 84x84x1 grayscale obs (uint8 for storage, float for inference)
+  config.py        DinoEnvConfig — ROI coords, fps, keys, timing, n_stack (single source of truth)
+  preprocess.py    BGR frame -> 84x84x1 grayscale frame (uint8); + float helpers for inference
+  framestack.py    FrameStacker — stack last n_stack frames into (H,W,n) for motion/velocity
   action_spec.py   DinoAction IntEnum: NOOP=0, JUMP=1, DUCK=2
-  dino_env.py      DinoEnv(gym.Env) — capture, act, reward, death detection
+  dino_env.py      DinoEnv(gym.Env) — capture, stack, act, reward, death detection
 
 src/ml/model/
   cnn_backbone.py      DinoCNNBackbone — the shared Conv stack (this is the canonical one)
@@ -65,7 +66,9 @@ src/ml/rl/         policy.py (SB3 features extractor), train.py, play.py
 
 Key cross-cutting facts that aren't obvious from one file:
 
-- **`DinoEnvConfig` is the contract** between every component. Observation size (84), ROI, fps, and key bindings all come from it. The recorder, the env, and the live players all reconstruct observations the same way via `preprocess.py`, so changing `obs_size` or the preprocessing requires retraining and updating `cnn_backbone.py`'s hardcoded `84` sample shape.
+- **`DinoEnvConfig` is the contract** between every component. `obs_size` (84), `n_stack` (4), ROI, fps, and key bindings all come from it. The recorder, the env, and the live players all build observations the same way (`preprocess.py` per-frame → `FrameStacker` → `(obs_size, obs_size, n_stack)`). `obs_size` and `n_stack` are threaded into `DinoCNNBackbone(obs_size, in_channels)`, so changing either is automatically picked up — but it **invalidates any recorded `dino_sl_dataset.npz` and saved `*.pt`/`*.zip`** (channel/shape mismatch), so re-record and retrain.
+
+- **Observations are frame-stacked** so the agent can perceive motion/velocity; a single frame is non-Markov (you can't tell an obstacle's speed from one image). `FrameStacker` keeps the last `n_stack` grayscale frames as channels. `rl/policy.py` derives `obs_size`/`in_channels` robustly from the observation space because SB3 transposes image obs to channels-first.
 
 - **Death detection is heuristic, not from the game.** `DinoEnv._is_dead()` checks whether the mean brightness of a center crop exceeds 140 (the game-over screen is bright). Reward is `+1` per surviving step, `-100` on death.
 

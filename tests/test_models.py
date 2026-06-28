@@ -50,6 +50,28 @@ def test_rl_feature_extractor_threads_obs_size():
     assert out.shape == (2, 128)
 
 
+def test_backbone_multichannel_forward():
+    bb = DinoCNNBackbone(obs_size=84, in_channels=4)
+    out = bb(torch.zeros(2, 4, 84, 84))
+    assert out.shape == (2, bb.features_dim)
+
+
+def test_sl_model_multichannel_forward():
+    n = len(DinoAction)
+    model = DinoSLModel(n_actions=n, obs_size=84, in_channels=4)
+    out = model(torch.zeros(2, 4, 84, 84))
+    assert out.shape == (2, n)
+
+
+def test_rl_extractor_handles_both_channel_layouts():
+    # channels-last (H, W, C): env 가 정의한 원래 관측 공간
+    last = spaces.Box(low=0, high=255, shape=(84, 84, 4), dtype=np.uint8)
+    assert DinoFeatureExtractor(last, 256)(torch.zeros(2, 4, 84, 84)).shape == (2, 256)
+    # channels-first (C, H, W): SB3 가 이미지 관측을 transpose 한 형태
+    first = spaces.Box(low=0, high=255, shape=(4, 84, 84), dtype=np.uint8)
+    assert DinoFeatureExtractor(first, 256)(torch.zeros(2, 4, 84, 84)).shape == (2, 256)
+
+
 def test_rl_feature_extractor_forward_shape():
     obs_space = spaces.Box(low=0, high=255, shape=(84, 84, 1), dtype=np.uint8)
     fe = DinoFeatureExtractor(obs_space, features_dim=256)

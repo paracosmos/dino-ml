@@ -76,6 +76,8 @@ def main():
 
     assert X.shape[1] == env.obs_size and X.shape[2] == env.obs_size, \
         f"dataset obs_size={X.shape[1:3]} != env.obs_size={env.obs_size}"
+    assert X.shape[3] == env.n_stack, \
+        f"dataset n_stack={X.shape[3]} != env.n_stack={env.n_stack} (재녹화 필요)"
 
     X = torch.from_numpy(X).permute(0, 3, 1, 2).float() / 255.0
     y = torch.from_numpy(y).long()
@@ -113,7 +115,9 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device:", device)
 
-    model = DinoSLModel(n_actions=len(DinoAction), obs_size=env.obs_size).to(device)
+    model = DinoSLModel(
+        n_actions=len(DinoAction), obs_size=env.obs_size, in_channels=env.n_stack
+    ).to(device)
 
     # Fine-tuning: 기존 체크포인트가 있으면 이어서 학습
     best_acc = 0.0

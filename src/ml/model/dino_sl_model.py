@@ -4,10 +4,10 @@ from src.ml.model.cnn_backbone import DinoCNNBackbone
 
 class DinoSLModel(nn.Module):
 
-    def __init__(self, n_actions: int, obs_size: int = 84):
+    def __init__(self, n_actions: int, obs_size: int = 84, in_channels: int = 1):
         super().__init__()
 
-        self.backbone = DinoCNNBackbone(obs_size)
+        self.backbone = DinoCNNBackbone(obs_size, in_channels)
 
         self.head = nn.Sequential(
             nn.Linear(self.backbone.features_dim, 256),

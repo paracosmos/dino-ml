@@ -1,7 +1,7 @@
 import numpy as np
 
 from src.ml.dino.config import DinoEnvConfig
-from src.ml.dino.preprocess import preprocess_obs, preprocess_obs_float
+from src.ml.dino.preprocess import preprocess_obs, preprocess_obs_float, stack_to_float
 
 
 def _dummy_bgr(cfg, value=0):
@@ -21,3 +21,12 @@ def test_preprocess_obs_float_shape_and_range():
     assert obs.shape == (1, 1, cfg.obs_size, cfg.obs_size)
     assert obs.dtype == np.float32
     assert obs.min() >= 0.0 and obs.max() <= 1.0
+
+
+def test_stack_to_float_shape_and_range():
+    cfg = DinoEnvConfig()
+    stacked = np.full((cfg.obs_size, cfg.obs_size, cfg.n_stack), 255, dtype=np.uint8)
+    out = stack_to_float(stacked)
+    assert out.shape == (1, cfg.n_stack, cfg.obs_size, cfg.obs_size)
+    assert out.dtype == np.float32
+    assert out.min() >= 0.0 and out.max() <= 1.0
